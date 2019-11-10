@@ -126,17 +126,18 @@ static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_ulo
 static void* __php_ilimit_call_thread(void *arg) { /* {{{ */
     php_ilimit_call_t *call =
         (php_ilimit_call_t*) arg;
-    int __unused;
 
     pthread_mutex_lock(&call->mutex);
     call->state |= PHP_ILIMIT_RUNNING;
     pthread_cond_broadcast(&call->cond);
     pthread_mutex_unlock(&call->mutex);
 
-    pthread_setcanceltype(
-        PTHREAD_CANCEL_ASYNCHRONOUS, &__unused);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
     zend_call_function(
             &call->zend.info, &call->zend.cache);
+
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
     pthread_mutex_lock(&call->mutex);
     call->state &= ~PHP_ILIMIT_RUNNING;
