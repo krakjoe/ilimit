@@ -301,21 +301,27 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 
     while (execute_data && execute_data != execute_entry) {
         zend_execute_data *prev;
-        zval *var = EX_VAR_NUM(0),
-             *end;
+        uint32_t info =
+            ZEND_CALL_INFO(execute_data);
 
-        if (EX(func)->type == ZEND_USER_FUNCTION) {
-            end = var +
-                (EX(func)->op_array.last_var + EX(func)->op_array.T);
-        } else {
-            end = var + EX(func)->common.num_args;
+        zend_vm_stack_free_args(execute_data);
+
+        if (EX(func)->type == ZEND_USER_FUNCTION && EX(func)->common.num_args) {
+            zval *var = ZEND_CALL_VAR_NUM(execute_data, EX(func)->common.num_args),
+                 *end = var +
+                        (EX(func)->op_array.last_var + EX(func)->op_array.T);
+
+            while (var < end) {
+
+                if (Z_OPT_REFCOUNTED_P(var)) {
+                    zval_ptr_dtor(var);
+                }
+                var++;
+            }
         }
 
-        while (var < end) {
-            if (!Z_ISUNDEF_P(var) && Z_REFCOUNTED_P(var)) {
-                zval_ptr_dtor(var);
-            }
-            var++;
+        if (info & ZEND_CALL_FREE_EXTRA_ARGS) {
+            zend_vm_stack_free_extra_args_ex(info, execute_data);
         }
 
         if (EX(func)->common.fn_flags & ZEND_ACC_CLOSURE) {
@@ -325,7 +331,7 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
         prev = EX(prev_execute_data);
 
         if (prev != execute_entry) {
-            zend_vm_stack_free_call_frame(execute_data);
+            zend_vm_stack_free_call_frame_ex(info, execute_data);
         }
 
         execute_data = prev;
