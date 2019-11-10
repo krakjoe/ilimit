@@ -69,8 +69,6 @@ typedef struct _php_ilimit_call_t {
 #define PHP_ILIMIT_TIMEOUT  0x00000100
 #define PHP_ILIMIT_MEMORY   0x00001000
 
-static void php_ilimit_call_cleanup(php_ilimit_call_t *call);
-
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(ilimit)
@@ -213,10 +211,6 @@ static zend_always_inline int php_ilimit_memory(php_ilimit_call_t *call) { /* {{
         call->limits.memory.interval = 100;
     }
 
-    if (pthread_create(&call->threads.memory, NULL, __php_ilimit_memory_thread, call) != SUCCESS) {
-        return FAILURE;
-    }
-
     return SUCCESS;
 } /* }}} */
 
@@ -229,63 +223,42 @@ static zend_always_inline void php_ilimit_call_init(php_ilimit_call_t *call, zen
     call->zend.entry = entry;
 } /* }}} */
 
-static void php_ilimit_call_cleanup(php_ilimit_call_t *call) { /* {{{ */
-    zend_execute_data *execute_data = call->zend.frame;
-
-    while (execute_data && execute_data != call->zend.entry) {
-        zend_execute_data *prev;
-        zval *var = EX_VAR_NUM(0),
-             *end;
-
-        if (EX(func)->type == ZEND_USER_FUNCTION) {
-            end = var +
-                (EX(func)->op_array.last_var + EX(func)->op_array.T);
-        } else {
-            end = var + EX(func)->common.num_args;
-        }
-
-        while (var < end) {
-            if (!Z_ISUNDEF_P(var) && Z_REFCOUNTED_P(var)) {
-                zval_ptr_dtor(var);
-            }
-            var++;
-        }
-
-        if (EX(func)->common.fn_flags & ZEND_ACC_CLOSURE) {
-            OBJ_RELEASE(ZEND_CLOSURE_OBJECT(EX(func)));
-        }
-
-        prev = EX(prev_execute_data);
-
-        if (prev != call->zend.entry) {
-            zend_vm_stack_free_call_frame(execute_data);
-        }
-
-        execute_data = prev;
-    }
-} /* }}} */
-
-static void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
+static zend_always_inline void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
     struct timespec clock;
 
     pthread_mutex_lock(&call->mutex);
 
-    if (call->limits.memory.max && php_ilimit_memory(call) != SUCCESS) {
-        zend_throw_exception_ex(php_ilimit_memory_ex, 0,
-            "memory limit of %" PRIu64 " bytes would be exceeded",
-            PG(memory_limit));
-        pthread_mutex_unlock(&call->mutex);
-        return;
+    if (call->limits.memory.max) {
+        if (php_ilimit_memory(call) != SUCCESS) {
+            zend_throw_exception_ex(php_ilimit_memory_ex, 0,
+                "memory limit of %" PRIu64 " bytes would be exceeded",
+                PG(memory_limit));
+            call->state |= PHP_ILIMIT_FINISHED;
+            pthread_mutex_unlock(&call->mutex);
+            return;
+        }
+
+        if (pthread_create(&call->threads.memory, NULL, __php_ilimit_memory_thread, call) != SUCCESS) {
+            zend_throw_exception_ex(php_ilimit_sys_ex, 0,
+                "cannot create memory management thread");
+            call->state |= PHP_ILIMIT_FINISHED;
+            pthread_mutex_unlock(&call->mutex);
+            return;
+        }
     }
 
     php_ilimit_clock(&clock, call->limits.cpu);
 
     if (pthread_create(&call->threads.cpu, NULL, __php_ilimit_call_thread, call) != SUCCESS) {
         zend_throw_exception_ex(php_ilimit_sys_ex, 0,
-            "cannot create management threads");
+            "cannot create cpu management thread");
         call->state |= PHP_ILIMIT_FINISHED;
         pthread_cond_broadcast(&call->cond);
         pthread_mutex_unlock(&call->mutex);
+
+        if (call->limits.memory.max) {
+            pthread_join(call->threads.memory, NULL);
+        }
         return;
     }
 
@@ -317,6 +290,43 @@ php_ilimit_call_finish:
 
     if (call->limits.memory.max) {
         pthread_join(call->threads.memory, NULL);
+    }
+} /* }}} */
+
+static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) { /* {{{ */
+    zend_execute_data *execute_data = call->zend.frame,
+                      *execute_entry = call->zend.entry;
+
+    while (execute_data && execute_data != execute_entry) {
+        zend_execute_data *prev;
+        zval *var = EX_VAR_NUM(0),
+             *end;
+
+        if (EX(func)->type == ZEND_USER_FUNCTION) {
+            end = var +
+                (EX(func)->op_array.last_var + EX(func)->op_array.T);
+        } else {
+            end = var + EX(func)->common.num_args;
+        }
+
+        while (var < end) {
+            if (!Z_ISUNDEF_P(var) && Z_REFCOUNTED_P(var)) {
+                zval_ptr_dtor(var);
+            }
+            var++;
+        }
+
+        if (EX(func)->common.fn_flags & ZEND_ACC_CLOSURE) {
+            OBJ_RELEASE(ZEND_CLOSURE_OBJECT(EX(func)));
+        }
+
+        prev = EX(prev_execute_data);
+
+        if (prev != execute_entry) {
+            zend_vm_stack_free_call_frame(execute_data);
+        }
+
+        execute_data = prev;
     }
 } /* }}} */
 
