@@ -209,7 +209,7 @@ static zend_always_inline int php_ilimit_memory(php_ilimit_call_t *call) { /* {{
         return FAILURE;
     }
 
-    if (!call->limits.memory.interval) {
+    if (call->limits.memory.interval <= 0) {
         call->limits.memory.interval = 100;
     }
 
