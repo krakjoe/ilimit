@@ -306,7 +306,7 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 
         zend_vm_stack_free_args(execute_data);
 
-        if (EX(func)->type == ZEND_USER_FUNCTION && EX(func)->common.num_args) {
+        if (EX(func)->type == ZEND_USER_FUNCTION) {
             zval *var = ZEND_CALL_VAR_NUM(execute_data, EX(func)->common.num_args),
                  *end = var +
                         (EX(func)->op_array.last_var + EX(func)->op_array.T);
