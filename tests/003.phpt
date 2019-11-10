@@ -10,7 +10,7 @@ if (!extension_loaded('ilimit')) {
 <?php
 try {
     \ilimit(function(){
-        sleep(2);
+        sleep(5);
     }, [], 1000000);
 } catch (\ilimit\Error\CPU $ex) {
     echo "OK\n";

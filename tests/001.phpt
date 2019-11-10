@@ -9,7 +9,7 @@ if (!extension_loaded('ilimit')) {
 --FILE--
 <?php
 \ilimit(function(){
-    sleep(2);
+    sleep(5);
 }, [], 1000000);
 ?>
 --EXPECTF--
