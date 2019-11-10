@@ -102,27 +102,27 @@ PHP_MINIT_FUNCTION(ilimit)
  */
 PHP_MINFO_FUNCTION(ilimit)
 {
-	php_info_print_table_start();
-	php_info_print_table_header(2, "ilimit support", "enabled");
-	php_info_print_table_end();
+    php_info_print_table_start();
+    php_info_print_table_header(2, "ilimit support", "enabled");
+    php_info_print_table_end();
 }
 /* }}} */
 
 static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_ulong ms) { /* {{{ */
-	struct timeval time;
-	
-	if (ms == 0) {
+    struct timeval time;
+    
+    if (ms == 0) {
         return;
-	}
-	
-	gettimeofday(&time, NULL);
+    }
+    
+    gettimeofday(&time, NULL);
 
-	time.tv_sec += (ms / 1000000UL);
-	time.tv_sec += (time.tv_usec + (ms % 1000000UL)) / 1000000UL;
-	time.tv_usec = (time.tv_usec + (ms % 1000000UL)) % 1000000UL;
+    time.tv_sec += (ms / 1000000UL);
+    time.tv_sec += (time.tv_usec + (ms % 1000000UL)) / 1000000UL;
+    time.tv_usec = (time.tv_usec + (ms % 1000000UL)) % 1000000UL;
 
-	clock->tv_sec = time.tv_sec;
-	clock->tv_nsec = time.tv_usec * 1000;
+    clock->tv_sec = time.tv_sec;
+    clock->tv_nsec = time.tv_usec * 1000;
 } /* }}} */
 
 static void* __php_ilimit_call_thread(void *arg) { /* {{{ */
@@ -387,24 +387,24 @@ PHP_FUNCTION(ilimit)
 /* {{{ php_ilimit_functions[]
  */
 static const zend_function_entry php_ilimit_functions[] = {
-	PHP_FE(ilimit, php_ilimit_arginfo)
-	PHP_FE_END
+    PHP_FE(ilimit, php_ilimit_arginfo)
+    PHP_FE_END
 };
 /* }}} */
 
 /* {{{ ilimit_module_entry
  */
 zend_module_entry ilimit_module_entry = {
-	STANDARD_MODULE_HEADER,
-	"ilimit",
-	php_ilimit_functions,
-	PHP_MINIT(ilimit),
-	NULL,
-	NULL,
-	NULL,
-	PHP_MINFO(ilimit),
-	PHP_ILIMIT_VERSION,
-	STANDARD_MODULE_PROPERTIES
+    STANDARD_MODULE_HEADER,
+    "ilimit",
+    php_ilimit_functions,
+    PHP_MINIT(ilimit),
+    NULL,
+    NULL,
+    NULL,
+    PHP_MINFO(ilimit),
+    PHP_ILIMIT_VERSION,
+    STANDARD_MODULE_PROPERTIES
 };
 /* }}} */
 
