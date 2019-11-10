@@ -3,6 +3,16 @@ ilimit
 
 `ilimit` provides a method to execute a call while imposing limits on the CPU time and memory that the call may consume.
 
+Requirements
+============
+
+  * PHP 7.1+
+  * NTS
+  * pthread.h
+
+API
+===
+
 ```php
 /**
 * @param callable the invocation to make
@@ -19,11 +29,5 @@ ilimit
 */
 function ilimit(callable $callable, array $args = [], integer $timeoutMs, integer $memoryBytes = 0, integer $memoryCheckIntervalMs = 0) : mixed;
 ```
-
-Requirements:
-
-  * PHP 7.1+
-  * NTS
-  * pthread.h
 
 
