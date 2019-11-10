@@ -55,10 +55,10 @@ typedef struct _php_ilimit_call_t {
     } zend;
 
     struct _php_ilimit_call_limits {
-        zend_ulong cpu;
+        zend_long cpu;
         struct _memory {
-            zend_ulong max;
-            zend_ulong interval;
+            zend_long max;
+            zend_long interval;
         } memory;
     } limits;
 
@@ -106,7 +106,7 @@ PHP_MINFO_FUNCTION(ilimit)
 }
 /* }}} */
 
-static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_ulong ms) { /* {{{ */
+static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_long ms) { /* {{{ */
     struct timeval time;
 
     if (ms == 0) {
@@ -115,9 +115,9 @@ static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_ulo
 
     gettimeofday(&time, NULL);
 
-    time.tv_sec += (ms / 1000000UL);
-    time.tv_sec += (time.tv_usec + (ms % 1000000UL)) / 1000000UL;
-    time.tv_usec = (time.tv_usec + (ms % 1000000UL)) % 1000000UL;
+    time.tv_sec += (ms / 1000000L);
+    time.tv_sec += (time.tv_usec + (ms % 1000000L)) / 1000000L;
+    time.tv_usec = (time.tv_usec + (ms % 1000000L)) % 1000000L;
 
     clock->tv_sec = time.tv_sec;
     clock->tv_nsec = time.tv_usec * 1000;
