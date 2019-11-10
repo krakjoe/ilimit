@@ -3,7 +3,7 @@
   "description": "IDE and static analysis helper for the krakjoe/ilimit extension",
   "keywords": ["ilimit", "timeout", "call", "limit"],
   "type": "library",
-  "license": "PHP",
+  "license": "PHP License v3.01",
   "authors": [
     {
       "name": "Joe Watkins",
