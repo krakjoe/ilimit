@@ -1,0 +1,23 @@
+{
+  "name": "krakjoe/ilimit",
+  "description": "IDE and static analysis helper for the krakjoe/ilimit extension",
+  "keywords": ["ilimit", "timeout", "call", "limit"],
+  "type": "library",
+  "license": "PHP",
+  "authors": [
+    {
+      "name": "Joe Watkins",
+      "email": "krakjoe@php.net"
+    }
+  ],
+  "require": {
+    "php": ">=7.1.0",
+    "ext-ilimit": "*"
+  },
+  "autoload-dev": {
+    "files": ["stubs.php"]
+  },
+  "archive": {
+    "exclude": ["/*", "!/stubs.php"]
+  }
+}

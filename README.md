@@ -9,25 +9,42 @@ Requirements
   * PHP 7.1+
   * NTS
   * pthread.h
+  
+Stubs
+=====
+
+This repository includes PHP files with method headers for IDE integration and 
+static analysis support.
+
+To install, run the following command:
+```
+composer require krakjoe/ilimit
+```
 
 API
 ===
 
 ```php
 /**
-* @param callable the invocation to make
-* @param array    arguments to pass to callable
-* @param integer  the maximum time allowed for invocation of callable in milliseconds
-* @param integer  the maximum amount of memory the invocation may consume
-* @param integer  the millisecond interval between memory check
-*
-* @throws \ilimit\Error\System  should the system lack necessary resources to make the call
-* @throws \ilimit\Error\CPU     should the invocation exceed allowed time
-* @throws \ilimit\Error\Memory  should the invocation exceed allowed memory
-
-* @return return value of invocation
-*/
-function ilimit(callable $callable, array $args = [], integer $timeoutMs, integer $memoryBytes = 0, integer $memoryCheckIntervalMs = 0) : mixed;
+ * Call a callback while imposing limits on the CPU time and memory that
+ * the call may consume.
+ *
+ * @param callable $callable      The invocation to make.
+ * @param array    $arguments     The list of arguments.
+ * @param int      $timeout       The maximum execution time, in microseconds.
+ * @param int      $maxMemory     The maximum amount of memory, in bytes.
+ *                                If set to zero, no limit is imposed.
+ * @param int      $checkInterval The interval between memory checks,
+ *                                in microseconds. If set to zero or less,
+ *                                a default interval of 100 microseconds is used.
+ *
+ * @return mixed Returns the return value of the callback.
+ *
+ * @throws Error\System  If the system lacks necessary resources to make the call.
+ * @throws Error\Timeout If the invocation exceeds the allowed time.
+ * @throws Error\Memory  If the invocation exceeds the allowed memory.
+ */
+function ilimit(callable $callable, array $arguments, int $timeout, int $maxMemory = 0, int $checkInterval = 0)
 ```
 
 
