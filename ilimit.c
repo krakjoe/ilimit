@@ -108,11 +108,11 @@ PHP_MINFO_FUNCTION(ilimit)
 
 static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_ulong ms) { /* {{{ */
     struct timeval time;
-    
+
     if (ms == 0) {
         return;
     }
-    
+
     gettimeofday(&time, NULL);
 
     time.tv_sec += (ms / 1000000UL);
@@ -154,7 +154,8 @@ static void* __php_ilimit_memory_thread(void *arg) { /* {{{ */
 
     pthread_mutex_lock(&call->mutex);
 
-    while (!(call->state & PHP_ILIMIT_RUNNING)) {
+    while (!(call->state &
+        (PHP_ILIMIT_RUNNING|PHP_ILIMIT_FINISHED|PHP_ILIMIT_TIMEOUT))) {
         pthread_cond_wait(&call->cond, &call->mutex);
     }
 
@@ -331,11 +332,13 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 } /* }}} */
 
 static zend_always_inline void php_ilimit_call_destroy(php_ilimit_call_t *call) { /* {{{ */
-    if (call->state & (PHP_ILIMIT_TIMEOUT|PHP_ILIMIT_MEMORY)) {
-        php_ilimit_call_cleanup(call);
-    }
+    if (call->state &
+        (PHP_ILIMIT_TIMEOUT|PHP_ILIMIT_MEMORY)) {
 
-    EG(current_execute_data) = call->zend.entry;
+        php_ilimit_call_cleanup(call);
+
+        EG(current_execute_data) = call->zend.entry;
+    }
 
     if (call->state & PHP_ILIMIT_TIMEOUT) {
         zend_throw_exception_ex(php_ilimit_cpu_ex, 0,
