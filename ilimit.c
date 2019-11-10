@@ -33,6 +33,7 @@
 # include <pthread.h>
 #endif
 
+zend_class_entry *php_ilimit_ex;
 zend_class_entry *php_ilimit_sys_ex;
 zend_class_entry *php_ilimit_cpu_ex;
 zend_class_entry *php_ilimit_memory_ex;
@@ -75,22 +76,27 @@ PHP_MINIT_FUNCTION(ilimit)
 {
     zend_class_entry ce;
 
+    INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error", NULL);
+
+    php_ilimit_ex =
+        zend_register_internal_class_ex(&ce, zend_ce_exception);
+
     INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error\\System", NULL);
 
     php_ilimit_sys_ex =
-        zend_register_internal_class_ex(&ce, zend_ce_exception);
+        zend_register_internal_class_ex(&ce, php_ilimit_ex);
     php_ilimit_sys_ex->ce_flags |= ZEND_ACC_FINAL;
 
-    INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error\\CPU", NULL);
+    INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error\\Timeout", NULL);
 
     php_ilimit_cpu_ex =
-        zend_register_internal_class_ex(&ce, zend_ce_exception);
+        zend_register_internal_class_ex(&ce, php_ilimit_ex);
     php_ilimit_cpu_ex->ce_flags |= ZEND_ACC_FINAL;
 
     INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error\\Memory", NULL);
 
     php_ilimit_memory_ex =
-        zend_register_internal_class_ex(&ce, zend_ce_exception);
+        zend_register_internal_class_ex(&ce, php_ilimit_ex);
     php_ilimit_memory_ex->ce_flags |= ZEND_ACC_FINAL;
 
     return SUCCESS;
@@ -349,7 +355,7 @@ static zend_always_inline void php_ilimit_call_destroy(php_ilimit_call_t *call) 
 
     if (call->state & PHP_ILIMIT_TIMEOUT) {
         zend_throw_exception_ex(php_ilimit_cpu_ex, 0,
-            "the cpu time limit of %" PRIu64 " microseconds has been reached",
+            "the time limit of %" PRIu64 " microseconds has been reached",
             call->limits.cpu);
     }
 

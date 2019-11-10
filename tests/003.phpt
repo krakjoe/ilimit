@@ -1,5 +1,5 @@
 --TEST--
-Check ilimit catch cpu
+Check ilimit catch Timeout
 --SKIPIF--
 <?php
 if (!extension_loaded('ilimit')) {
@@ -12,7 +12,7 @@ try {
     \ilimit(function(){
         sleep(5);
     }, [], 1000000);
-} catch (\ilimit\Error\CPU $ex) {
+} catch (\ilimit\Error\Timeout $ex) {
     echo "OK\n";
 }
 ?>

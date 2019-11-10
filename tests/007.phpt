@@ -15,7 +15,7 @@ if (!extension_loaded('ilimit')) {
 }, [], 1000000);
 ?>
 --EXPECTF--
-Fatal error: Uncaught ilimit\Error\CPU: the cpu time limit of 500000 microseconds has been reached in %s/007.php:5
+Fatal error: Uncaught ilimit\Error\Timeout: the time limit of 500000 microseconds has been reached in %s/007.php:5
 Stack trace:
 #0 %s/007.php(5): ilimit(Object(Closure), Array, 500000)
 #1 [internal function]: {closure}()
