@@ -11,7 +11,7 @@ if (!extension_loaded('ilimit')) {
 try {
     \ilimit(function(){
         while(true) {
-            $array[] = \mt_rand();
+            $array[] = [4,2];
         }
     }, [], 100000000, 10000);
 } catch (\ilimit\Error\Memory $ex) {

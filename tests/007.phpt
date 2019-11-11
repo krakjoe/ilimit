@@ -15,10 +15,12 @@ if (!extension_loaded('ilimit')) {
 }, [], 1000000);
 ?>
 --EXPECTF--
-Fatal error: Uncaught ilimit\Error\Timeout: the time limit of 500000 microseconds has been reached in %s/007.php:5
+Fatal error: Uncaught ilimit\Error\Timeout: the time limit of 500000 microseconds has been reached in %s:4
 Stack trace:
-#0 %s/007.php(5): ilimit(Object(Closure), Array, 500000)
+#0 %s(4): sleep(10)
 #1 [internal function]: {closure}()
-#2 %s/007.php(6): ilimit(Object(Closure), Array, 1000000)
-#3 {main}
-  thrown in %s/007.php on line 5
+#2 %s(5): ilimit(Object(Closure), Array, 500000)
+#3 [internal function]: {closure}()
+#4 %s(6): ilimit(Object(Closure), Array, 1000000)
+#5 {main}
+  thrown in %s on line 4
