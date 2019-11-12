@@ -266,7 +266,7 @@ static void* __php_ilimit_memory_thread(void *arg) { /* {{{ */
 
                     php_ilimit_call_cancel(call);
 
-                    goto php_ilimit_memory_finish;
+                    goto __php_ilimit_memory_finish;
                 }
             break;
         }
@@ -274,7 +274,7 @@ static void* __php_ilimit_memory_thread(void *arg) { /* {{{ */
 
     pthread_mutex_unlock(&call->mutex);
 
-php_ilimit_memory_finish:
+__php_ilimit_memory_finish:
     pthread_exit(NULL);
 } /* }}} */
 
@@ -303,78 +303,6 @@ static zend_always_inline void php_ilimit_call_init(php_ilimit_call_t *call, zen
     pthread_cond_init(&call->cond, NULL);
 
     call->zend.entry = entry;
-} /* }}} */
-
-static zend_always_inline void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
-    struct timespec clock;
-
-    pthread_mutex_lock(&call->mutex);
-
-    if (call->limits.memory.max) {
-        if (php_ilimit_memory(call) != SUCCESS) {
-            zend_throw_exception_ex(php_ilimit_memory_ex, 0,
-                "memory limit of %" PRIu64 " bytes would be exceeded",
-                PG(memory_limit));
-            call->state |= PHP_ILIMIT_FINISHED;
-            pthread_mutex_unlock(&call->mutex);
-            return;
-        }
-
-        if (pthread_create(&call->threads.memory, NULL, __php_ilimit_memory_thread, call) != SUCCESS) {
-            zend_throw_exception_ex(php_ilimit_sys_ex, 0,
-                "cannot create memory management thread");
-            call->state |= PHP_ILIMIT_FINISHED;
-            pthread_mutex_unlock(&call->mutex);
-            return;
-        }
-    }
-
-    php_ilimit_clock(&clock, call->limits.cpu);
-
-    if (pthread_create(&call->threads.cpu, NULL, __php_ilimit_call_thread, call) != SUCCESS) {
-        zend_throw_exception_ex(php_ilimit_sys_ex, 0,
-            "cannot create cpu management thread");
-        call->state |= PHP_ILIMIT_FINISHED;
-        pthread_cond_broadcast(&call->cond);
-        pthread_mutex_unlock(&call->mutex);
-
-        if (call->limits.memory.max) {
-            pthread_join(call->threads.memory, NULL);
-        }
-        return;
-    }
-
-    while (!(call->state & PHP_ILIMIT_FINISHED)) {
-        switch (pthread_cond_timedwait(&call->cond, &call->mutex, &clock)) {
-            case SUCCESS:
-                /* do nothing, signalled */
-            break;
-
-            case ETIMEDOUT: {
-                call->zend.frame =
-                    EG(current_execute_data);
-
-                call->state |= PHP_ILIMIT_TIMEOUT;
-
-                pthread_cond_broadcast(&call->cond);
-                pthread_mutex_unlock(&call->mutex);
-
-                php_ilimit_call_cancel(call);
-
-            }
-
-            goto php_ilimit_call_finish;
-        }
-    }
-
-    pthread_mutex_unlock(&call->mutex);
-
-php_ilimit_call_finish:
-    pthread_join(call->threads.cpu, NULL);
-
-    if (call->limits.memory.max) {
-        pthread_join(call->threads.memory, NULL);
-    }
 } /* }}} */
 
 static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) { /* {{{ */
@@ -481,15 +409,12 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
     EG(current_execute_data) = execute_entry;
 } /* }}} */
 
-static zend_always_inline int php_ilimit_call_destroy(php_ilimit_call_t *call) { /* {{{ */
-    int rc = SUCCESS;
-
+static zend_always_inline void php_ilimit_call_destroy(php_ilimit_call_t *call) { /* {{{ */
     if (call->state & PHP_ILIMIT_TIMEOUT) {
         zend_throw_exception_ex(php_ilimit_cpu_ex, 0,
             "the time limit of %" PRIu64 " microseconds has been reached",
             call->limits.cpu);
         php_ilimit_call_cleanup(call);
-        rc = FAILURE;
     }
 
     if (call->state & PHP_ILIMIT_MEMORY) {
@@ -497,13 +422,87 @@ static zend_always_inline int php_ilimit_call_destroy(php_ilimit_call_t *call) {
             "the memory limit of %" PRIu64 " bytes has been reached",
             call->limits.memory.max);
         php_ilimit_call_cleanup(call);
-        rc = FAILURE;
     }
 
     pthread_mutex_destroy(&call->mutex);
     pthread_cond_destroy(&call->cond);
+} /* }}} */
 
-    return rc;
+static zend_always_inline void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
+    struct timespec clock;
+
+    pthread_mutex_lock(&call->mutex);
+
+    if (call->limits.memory.max) {
+        if (php_ilimit_memory(call) != SUCCESS) {
+            zend_throw_exception_ex(php_ilimit_memory_ex, 0,
+                "memory limit of %" PRIu64 " bytes would be exceeded",
+                PG(memory_limit));
+            call->state |= PHP_ILIMIT_FINISHED;
+            pthread_mutex_unlock(&call->mutex);
+
+            goto __php_ilimit_call_destroy;
+        }
+
+        if (pthread_create(&call->threads.memory, NULL, __php_ilimit_memory_thread, call) != SUCCESS) {
+            zend_throw_exception_ex(php_ilimit_sys_ex, 0,
+                "cannot create memory management thread");
+            call->state |= PHP_ILIMIT_FINISHED;
+            pthread_mutex_unlock(&call->mutex);
+
+            goto __php_ilimit_call_destroy;
+        }
+    }
+
+    php_ilimit_clock(&clock, call->limits.cpu);
+
+    if (pthread_create(&call->threads.cpu, NULL, __php_ilimit_call_thread, call) != SUCCESS) {
+        zend_throw_exception_ex(php_ilimit_sys_ex, 0,
+            "cannot create cpu management thread");
+        call->state |= PHP_ILIMIT_FINISHED;
+        pthread_cond_broadcast(&call->cond);
+        pthread_mutex_unlock(&call->mutex);
+
+        if (call->limits.memory.max) {
+            pthread_join(call->threads.memory, NULL);
+        }
+
+        goto __php_ilimit_call_destroy;
+    }
+
+    while (!(call->state & PHP_ILIMIT_FINISHED)) {
+        switch (pthread_cond_timedwait(&call->cond, &call->mutex, &clock)) {
+            case SUCCESS:
+                /* do nothing, signalled */
+            break;
+
+            case ETIMEDOUT: {
+                call->zend.frame =
+                    EG(current_execute_data);
+
+                call->state |= PHP_ILIMIT_TIMEOUT;
+
+                pthread_cond_broadcast(&call->cond);
+                pthread_mutex_unlock(&call->mutex);
+
+                php_ilimit_call_cancel(call);
+            }
+
+            goto __php_ilimit_call_finish;
+        }
+    }
+
+    pthread_mutex_unlock(&call->mutex);
+
+__php_ilimit_call_finish:
+    pthread_join(call->threads.cpu, NULL);
+
+    if (call->limits.memory.max) {
+        pthread_join(call->threads.memory, NULL);
+    }
+
+__php_ilimit_call_destroy:
+    php_ilimit_call_destroy(call);
 } /* }}} */
 
 /* {{{ arg info */
@@ -539,8 +538,6 @@ PHP_FUNCTION(ilimit)
     }
 
     php_ilimit_call(&call);
-
-    php_ilimit_call_destroy(&call);
 
     if (args) {
         zend_fcall_info_args_clear(&call.zend.info, 1);
