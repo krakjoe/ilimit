@@ -439,9 +439,11 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
                         }
                     }
                 }
-            } else {
+            }
+
+            if (EX(func)->op_array.last_var) {
                 zval *var = EX_VAR_NUM(EX(func)->common.num_args),
-                     *end = var + (EX(func)->op_array.last_var + EX(func)->op_array.T);
+                     *end = var + (EX(func)->op_array.last_var);
                 
                 while (var < end) {
                     if (Z_OPT_REFCOUNTED_P(var)) {
