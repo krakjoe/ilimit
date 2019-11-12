@@ -540,10 +540,10 @@ PHP_FUNCTION(ilimit)
 
     php_ilimit_call(&call);
 
-    if (php_ilimit_call_destroy(&call) == SUCCESS) {
-        if (args) {
-            zend_fcall_info_args_clear(&call.zend.info, 1);
-        }
+    php_ilimit_call_destroy(&call);
+
+    if (args) {
+        zend_fcall_info_args_clear(&call.zend.info, 1);
     }
 } /* }}} */
 
