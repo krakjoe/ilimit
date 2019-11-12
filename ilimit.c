@@ -172,7 +172,7 @@ static void php_ilimit_call_cancel(php_ilimit_call_t *call) {
             case ETIMEDOUT:
                 if (!cancelled) {
                     pthread_cancel(
-                        call->threads.cpu);                    
+                        call->threads.cpu);
                     cancelled = 1;
                 }
 
@@ -195,7 +195,7 @@ static void __php_ilimit_call_thread_cancel(php_ilimit_call_t *call) {
     pthread_mutex_lock(&call->mutex);
 
     call->state |= PHP_ILIMIT_INTERRUPTED;
-    
+
     pthread_cond_broadcast(&call->cond);
     pthread_mutex_unlock(&call->mutex);
 }
@@ -393,6 +393,19 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
         }
 
         if (EX(func)->type == ZEND_USER_FUNCTION) {
+
+            if (EX(func)->op_array.last_var) {
+                zval *var = EX_VAR_NUM(EX(func)->common.num_args),
+                     *end = var + (EX(func)->op_array.last_var);
+
+                while (var < end) {
+                    if (Z_OPT_REFCOUNTED_P(var)) {
+                        zval_ptr_dtor(var);
+                    }
+                    var++;
+                }
+            }
+
             if (EX(func)->op_array.last_live_range) {
                 int i;
                 uint32_t op = EX(opline) - EX(func)->op_array.opcodes;
@@ -438,18 +451,6 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
                             }
                         }
                     }
-                }
-            }
-
-            if (EX(func)->op_array.last_var) {
-                zval *var = EX_VAR_NUM(EX(func)->common.num_args),
-                     *end = var + (EX(func)->op_array.last_var);
-                
-                while (var < end) {
-                    if (Z_OPT_REFCOUNTED_P(var)) {
-                        zval_ptr_dtor(var);
-                    }
-                    var++;
                 }
             }
         }
