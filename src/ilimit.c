@@ -15,61 +15,17 @@
   | Author: krakjoe                                                      |
   +----------------------------------------------------------------------+
  */
+#ifndef HAVE_PHP_ILIMIT_C
+#define HAVE_PHP_ILIMIT_C
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
+#include <php.h>
 
-#include "php.h"
-#include "ext/standard/info.h"
-#include "php_ilimit.h"
-
-#include "zend_exceptions.h"
-#include "zend_closures.h"
-
-#ifdef ZTS
-# error "Cannot support thread safe builds"
-#else
-# include <pthread.h>
-#endif
+#include "ilimit.h"
 
 zend_class_entry *php_ilimit_ex;
 zend_class_entry *php_ilimit_sys_ex;
 zend_class_entry *php_ilimit_cpu_ex;
 zend_class_entry *php_ilimit_memory_ex;
-
-typedef struct _php_ilimit_call_t {
-    pthread_mutex_t mutex;
-    pthread_cond_t  cond;
-    zend_ulong      state;
-
-    struct _php_ilimit_call_threads {
-        pthread_t cpu;
-        pthread_t memory;
-    } threads;
-
-    struct _php_ilimit_call_zend {
-        zend_fcall_info       info;
-        zend_fcall_info_cache cache;
-        zend_execute_data    *entry;
-        zend_execute_data    *frame;
-    } zend;
-
-    struct _php_ilimit_call_limits {
-        zend_long cpu;
-        struct _memory {
-            zend_long max;
-            zend_long interval;
-        } memory;
-    } limits;
-
-} php_ilimit_call_t;
-
-#define PHP_ILIMIT_RUNNING  0x00000001
-#define PHP_ILIMIT_FINISHED 0x00000010
-#define PHP_ILIMIT_TIMEOUT  0x00000100
-#define PHP_ILIMIT_MEMORY   0x00001000
-#define PHP_ILIMIT_INTERRUPTED 0x00010000
 
 __thread php_ilimit_call_t *__context;
 
@@ -93,10 +49,7 @@ static void php_ilimit_interrupt(zend_execute_data *execute_data) { /* {{{ */
     pthread_exit(NULL);
 } /* }}} */
 
-/* {{{ PHP_MINIT_FUNCTION
- */
-PHP_MINIT_FUNCTION(ilimit)
-{
+void php_ilimit_startup(void) { /* {{{ */
     zend_class_entry ce;
 
     INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error", NULL);
@@ -124,19 +77,7 @@ PHP_MINIT_FUNCTION(ilimit)
 
     zend_interrupt_callback = zend_interrupt_function;
     zend_interrupt_function = php_ilimit_interrupt;
-
-    return SUCCESS;
 } /* }}} */
-
-/* {{{ PHP_MINFO_FUNCTION
- */
-PHP_MINFO_FUNCTION(ilimit)
-{
-    php_info_print_table_start();
-    php_info_print_table_header(2, "ilimit support", "enabled");
-    php_info_print_table_end();
-}
-/* }}} */
 
 static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_long ms) { /* {{{ */
     struct timeval time;
@@ -296,7 +237,7 @@ static zend_always_inline int php_ilimit_memory(php_ilimit_call_t *call) { /* {{
     return SUCCESS;
 } /* }}} */
 
-static zend_always_inline void php_ilimit_call_init(php_ilimit_call_t *call, zend_execute_data *entry) { /* {{{ */
+void php_ilimit_call_init(php_ilimit_call_t *call, zend_execute_data *entry) { /* {{{ */
     memset(call, 0, sizeof(php_ilimit_call_t));
 
     pthread_mutex_init(&call->mutex, NULL);
@@ -428,7 +369,7 @@ static zend_always_inline void php_ilimit_call_destroy(php_ilimit_call_t *call) 
     pthread_cond_destroy(&call->cond);
 } /* }}} */
 
-static zend_always_inline void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
+void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
     struct timespec clock;
 
     pthread_mutex_lock(&call->mutex);
@@ -505,72 +446,4 @@ __php_ilimit_call_destroy:
     php_ilimit_call_destroy(call);
 } /* }}} */
 
-/* {{{ arg info */
-ZEND_BEGIN_ARG_INFO_EX(php_ilimit_arginfo, 0, 0, 1)
-    ZEND_ARG_TYPE_INFO(0, callable, IS_CALLABLE, 0)
-    ZEND_ARG_TYPE_INFO(0, arguments, IS_ARRAY, 0)
-    ZEND_ARG_TYPE_INFO(0, cpu, IS_LONG, 0)
-    ZEND_ARG_TYPE_INFO(0, memory, IS_LONG, 0)
-    ZEND_ARG_TYPE_INFO(0, interval, IS_LONG, 0)
-ZEND_END_ARG_INFO() /* }}} */
-
-/* {{{ proto mixed \ilimit(callable $function [, array $args, int $cpuMS, int $memoryBytes, int $intervalMs = 100]) */
-PHP_FUNCTION(ilimit)
-{
-    php_ilimit_call_t call;
-    zval *args = NULL;
-
-    php_ilimit_call_init(&call, execute_data);
-
-    ZEND_PARSE_PARAMETERS_START(1, 5)
-        Z_PARAM_FUNC(call.zend.info, call.zend.cache)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_ARRAY(args)
-        Z_PARAM_LONG(call.limits.cpu)
-        Z_PARAM_LONG(call.limits.memory.max)
-        Z_PARAM_LONG(call.limits.memory.interval)
-    ZEND_PARSE_PARAMETERS_END();
-
-    call.zend.info.retval = return_value;
-
-    if (args) {
-        zend_fcall_info_args(&call.zend.info, args);
-    }
-
-    php_ilimit_call(&call);
-
-    if (args) {
-        zend_fcall_info_args_clear(&call.zend.info, 1);
-    }
-} /* }}} */
-
-/* {{{ php_ilimit_functions[]
- */
-static const zend_function_entry php_ilimit_functions[] = {
-    PHP_FE(ilimit, php_ilimit_arginfo)
-    PHP_FE_END
-};
-/* }}} */
-
-/* {{{ ilimit_module_entry
- */
-zend_module_entry ilimit_module_entry = {
-    STANDARD_MODULE_HEADER,
-    "ilimit",
-    php_ilimit_functions,
-    PHP_MINIT(ilimit),
-    NULL,
-    NULL,
-    NULL,
-    PHP_MINFO(ilimit),
-    PHP_ILIMIT_VERSION,
-    STANDARD_MODULE_PROPERTIES
-};
-/* }}} */
-
-#ifdef COMPILE_DL_ILIMIT
-# ifdef ZTS
-ZEND_TSRMLS_CACHE_DEFINE()
-# endif
-ZEND_GET_MODULE(ilimit)
 #endif
