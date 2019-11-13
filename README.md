@@ -1,7 +1,7 @@
 ilimit
 ======
 
-`ilimit` provides a method to execute a call while imposing limits on the CPU time and memory that the call may consume.
+`ilimit` provides a method to execute a call while imposing limits on the time and memory that the call may consume.
 
 Requirements
 ============
@@ -26,7 +26,7 @@ API
 
 ```php
 /**
- * Call a callback while imposing limits on the CPU time and memory that
+ * Call a callback while imposing limits on the time and memory that
  * the call may consume.
  *
  * @param callable $callable      The invocation to make.
