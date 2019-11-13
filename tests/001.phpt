@@ -8,7 +8,7 @@ if (!extension_loaded('ilimit')) {
 ?>
 --FILE--
 <?php
-\ilimit(function(){
+\ilimit\call(function(){
     sleep(5);
 }, [], 1000000);
 ?>
@@ -17,6 +17,6 @@ Fatal error: Uncaught ilimit\Error\Timeout: the time limit of 1000000 microsecon
 Stack trace:
 #0 %s/001.php(3): sleep(5)
 #1 [internal function]: {closure}()
-#2 %s/001.php(4): ilimit(Object(Closure), Array, 1000000)
+#2 %s/001.php(4): ilimit\call(Object(Closure), Array, 1000000)
 #3 {main}
   thrown in %s/001.php on line 3

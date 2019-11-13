@@ -9,7 +9,7 @@ if (!extension_loaded('ilimit')) {
 --FILE--
 <?php
 try {
-    \ilimit(function(){
+    \ilimit\call(function(){
         @sleep(10);
     }, [], 1000000);
 } catch (\ilimit\Error\Timeout $e) {}

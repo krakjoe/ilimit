@@ -9,7 +9,7 @@ if (!extension_loaded('ilimit')) {
 --FILE--
 <?php
 try {
-    \ilimit(function($data){
+    \ilimit\call(function($data){
         foreach ($data as $key => $value) {
             sleep(10);
         }

@@ -46,7 +46,7 @@ PHP_MINFO_FUNCTION(ilimit)
 /* }}} */
 
 /* {{{ arg info */
-ZEND_BEGIN_ARG_INFO_EX(php_ilimit_arginfo, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(zend_ilimit_arginfo, 0, 0, 1)
     ZEND_ARG_TYPE_INFO(0, callable, IS_CALLABLE, 0)
     ZEND_ARG_TYPE_INFO(0, arguments, IS_ARRAY, 0)
     ZEND_ARG_TYPE_INFO(0, cpu, IS_LONG, 0)
@@ -54,8 +54,8 @@ ZEND_BEGIN_ARG_INFO_EX(php_ilimit_arginfo, 0, 0, 1)
     ZEND_ARG_TYPE_INFO(0, interval, IS_LONG, 0)
 ZEND_END_ARG_INFO() /* }}} */
 
-/* {{{ proto mixed \ilimit(callable $function [, array $args, int $cpuMS, int $memoryBytes, int $intervalMs = 100]) */
-PHP_FUNCTION(ilimit)
+/* {{{ proto mixed \ilimit\call(callable $function [, array $args, int $cpuMS, int $memoryBytes, int $intervalMs = 100]) */
+ZEND_NAMED_FUNCTION(zend_ilimit_call)
 {
     php_ilimit_call_t call;
     zval *args = NULL;
@@ -84,11 +84,11 @@ PHP_FUNCTION(ilimit)
     }
 } /* }}} */
 
-/* {{{ php_ilimit_functions[]
+/* {{{ zend_ilimit_functions[]
  */
-static const zend_function_entry php_ilimit_functions[] = {
-    PHP_FE(ilimit, php_ilimit_arginfo)
-    PHP_FE_END
+static const zend_function_entry zend_ilimit_api[] = {
+    ZEND_NS_FENTRY("ilimit", call, zend_ilimit_call, zend_ilimit_arginfo, 0)
+    ZEND_FE_END
 };
 /* }}} */
 
@@ -97,7 +97,7 @@ static const zend_function_entry php_ilimit_functions[] = {
 zend_module_entry ilimit_module_entry = {
     STANDARD_MODULE_HEADER,
     "ilimit",
-    php_ilimit_functions,
+    zend_ilimit_api,
     PHP_MINIT(ilimit),
     NULL,
     NULL,

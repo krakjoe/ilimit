@@ -22,7 +22,7 @@ namespace ilimit {
      * @throws Error\Timeout If the invocation exceeds the allowed time.
      * @throws Error\Memory  If the invocation exceeds the allowed memory.
      */
-    function ilimit(
+    function call(
         callable $callable,
         array $arguments,
         int $timeout,

@@ -9,7 +9,7 @@ if (!extension_loaded('ilimit')) {
 --FILE--
 <?php
 try {
-    \ilimit(function(){
+    \ilimit\call(function(){
         while(true) {
             $array[] = [4,2];
         }

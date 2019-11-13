@@ -8,7 +8,7 @@ if (!extension_loaded('ilimit')) {
 ?>
 --FILE--
 <?php
-\ilimit(function(){
+\ilimit\call(function(){
     while(true);
 }, [], 1000000);
 ?>
@@ -16,6 +16,6 @@ if (!extension_loaded('ilimit')) {
 Fatal error: Uncaught ilimit\Error\Timeout: the time limit of 1000000 microseconds has been reached in %s:3
 Stack trace:
 #0 [internal function]: {closure}()
-#1 %s(4): ilimit(Object(Closure), Array, 1000000)
+#1 %s(4): ilimit\call(Object(Closure), Array, 1000000)
 #2 {main}
   thrown in %s on line 3

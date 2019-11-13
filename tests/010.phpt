@@ -15,7 +15,7 @@ class Foo {
 }
 
 try {
-    \ilimit(function(){
+    \ilimit\call(function(){
         new Foo();
     }, [], 1000000);
 } catch (\ilimit\Error\Timeout $e) {
