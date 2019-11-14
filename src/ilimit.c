@@ -223,10 +223,6 @@ __php_ilimit_memory_finish:
 } /* }}} */
 
 static zend_always_inline int php_ilimit_memory(php_ilimit_call_t *call) { /* {{{ */
-    if (call->limits.memory.max == 0) {
-        return SUCCESS;
-    }
-
     call->limits.memory.max += zend_memory_usage(0);
 
     if (call->limits.memory.max > PG(memory_limit)) {
@@ -386,7 +382,16 @@ void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
         goto __php_ilimit_call_destroy;
     }
 
-    if (call->limits.memory.max) {
+    if (call->limits.memory.max < 0) {
+        zend_throw_exception_ex(php_ilimit_runtime_ex, 0,
+            "memory must be non negative");
+        call->state |= PHP_ILIMIT_FINISHED;
+        pthread_mutex_unlock(&call->mutex);
+
+        goto __php_ilimit_call_destroy;
+    }
+
+    if (call->limits.memory.max > 0) {
         if (php_ilimit_memory(call) != SUCCESS) {
             zend_throw_exception_ex(php_ilimit_memory_ex, 0,
                 "memory limit of %" PRIu64 " bytes would be exceeded",
