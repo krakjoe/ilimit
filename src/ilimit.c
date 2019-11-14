@@ -23,6 +23,7 @@
 #include "ilimit.h"
 
 zend_class_entry *php_ilimit_ex;
+zend_class_entry *php_ilimit_runtime_ex;
 zend_class_entry *php_ilimit_sys_ex;
 zend_class_entry *php_ilimit_cpu_ex;
 zend_class_entry *php_ilimit_memory_ex;
@@ -57,6 +58,12 @@ void php_ilimit_startup(void) { /* {{{ */
     php_ilimit_ex =
         zend_register_internal_class_ex(&ce, zend_ce_exception);
 
+    INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error\\Runtime", NULL);
+
+    php_ilimit_runtime_ex =
+        zend_register_internal_class_ex(&ce, php_ilimit_ex);
+    php_ilimit_runtime_ex->ce_flags |= ZEND_ACC_FINAL;
+
     INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error\\System", NULL);
 
     php_ilimit_sys_ex =
@@ -81,10 +88,6 @@ void php_ilimit_startup(void) { /* {{{ */
 
 static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_long ms) { /* {{{ */
     struct timeval time;
-
-    if (ms == 0) {
-        return;
-    }
 
     gettimeofday(&time, NULL);
 
@@ -373,6 +376,15 @@ void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
     struct timespec clock;
 
     pthread_mutex_lock(&call->mutex);
+
+    if (call->limits.cpu <= 0) {
+        zend_throw_exception_ex(php_ilimit_runtime_ex, 0,
+            "timeout must be positive");
+        call->state |= PHP_ILIMIT_FINISHED;
+        pthread_mutex_unlock(&call->mutex);
+
+        goto __php_ilimit_call_destroy;
+    }
 
     if (call->limits.memory.max) {
         if (php_ilimit_memory(call) != SUCCESS) {

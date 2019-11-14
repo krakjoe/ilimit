@@ -18,6 +18,7 @@ namespace ilimit {
      *
      * @return mixed Returns the return value of the callback.
      *
+     * @throws Error\Runtime If timeout is not positive.
      * @throws Error\System  If the system lacks necessary resources to make the call.
      * @throws Error\Timeout If the invocation exceeds the allowed time.
      * @throws Error\Memory  If the invocation exceeds the allowed memory.
@@ -41,6 +42,13 @@ namespace ilimit {
 namespace ilimit\Error {
 
     use ilimit\Error;
+
+    /**
+    * Thrown when invalid arguments supplied at runtime
+    */
+    class Runtime extends Error {
+
+    }
 
     /**
      * Thrown when the system lacks necessary resources to make the call.
