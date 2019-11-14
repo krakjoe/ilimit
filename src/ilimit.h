@@ -29,7 +29,7 @@
 
 extern zend_class_entry *php_ilimit_ex;
 extern zend_class_entry *php_ilimit_sys_ex;
-extern zend_class_entry *php_ilimit_cpu_ex;
+extern zend_class_entry *php_ilimit_timeout_ex;
 extern zend_class_entry *php_ilimit_memory_ex;
 
 typedef struct _php_ilimit_call_t {
@@ -38,7 +38,7 @@ typedef struct _php_ilimit_call_t {
     zend_ulong      state;
 
     struct _php_ilimit_call_threads {
-        pthread_t cpu;
+        pthread_t timeout;
         pthread_t memory;
     } threads;
 
@@ -50,7 +50,7 @@ typedef struct _php_ilimit_call_t {
     } zend;
 
     struct _php_ilimit_call_limits {
-        zend_long cpu;
+        zend_long timeout;
         struct _memory {
             zend_long max;
             zend_long interval;

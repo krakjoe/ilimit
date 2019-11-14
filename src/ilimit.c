@@ -25,7 +25,7 @@
 zend_class_entry *php_ilimit_ex;
 zend_class_entry *php_ilimit_runtime_ex;
 zend_class_entry *php_ilimit_sys_ex;
-zend_class_entry *php_ilimit_cpu_ex;
+zend_class_entry *php_ilimit_timeout_ex;
 zend_class_entry *php_ilimit_memory_ex;
 
 __thread php_ilimit_call_t *__context;
@@ -72,9 +72,9 @@ void php_ilimit_startup(void) { /* {{{ */
 
     INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error\\Timeout", NULL);
 
-    php_ilimit_cpu_ex =
+    php_ilimit_timeout_ex =
         zend_register_internal_class_ex(&ce, php_ilimit_ex);
-    php_ilimit_cpu_ex->ce_flags |= ZEND_ACC_FINAL;
+    php_ilimit_timeout_ex->ce_flags |= ZEND_ACC_FINAL;
 
     INIT_NS_CLASS_ENTRY(ce, "ilimit", "Error\\Memory", NULL);
 
@@ -116,7 +116,7 @@ static void php_ilimit_call_cancel(php_ilimit_call_t *call) {
             case ETIMEDOUT:
                 if (!cancelled) {
                     pthread_cancel(
-                        call->threads.cpu);
+                        call->threads.timeout);
                     cancelled = 1;
                 }
 
@@ -298,6 +298,7 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
                             }
                             zval_ptr_dtor_nogc(var);
                         } else if (kind == ZEND_LIVE_ROPE) {
+
                             zend_string **rope = (zend_string **)var;
                             zend_op *last = EX(func)->op_array.opcodes + op;
                             while ((last->opcode != ZEND_ROPE_ADD && last->opcode != ZEND_ROPE_INIT)
@@ -351,9 +352,9 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 
 static zend_always_inline void php_ilimit_call_destroy(php_ilimit_call_t *call) { /* {{{ */
     if (call->state & PHP_ILIMIT_TIMEOUT) {
-        zend_throw_exception_ex(php_ilimit_cpu_ex, 0,
+        zend_throw_exception_ex(php_ilimit_timeout_ex, 0,
             "the time limit of %" PRIu64 " microseconds has been reached",
-            call->limits.cpu);
+            call->limits.timeout);
         php_ilimit_call_cleanup(call);
     }
 
@@ -373,7 +374,7 @@ void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
 
     pthread_mutex_lock(&call->mutex);
 
-    if (call->limits.cpu <= 0) {
+    if (call->limits.timeout <= 0) {
         zend_throw_exception_ex(php_ilimit_runtime_ex, 0,
             "timeout must be positive");
         call->state |= PHP_ILIMIT_FINISHED;
@@ -412,11 +413,11 @@ void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
         }
     }
 
-    php_ilimit_clock(&clock, call->limits.cpu);
+    php_ilimit_clock(&clock, call->limits.timeout);
 
-    if (pthread_create(&call->threads.cpu, NULL, __php_ilimit_call_thread, call) != SUCCESS) {
+    if (pthread_create(&call->threads.timeout, NULL, __php_ilimit_call_thread, call) != SUCCESS) {
         zend_throw_exception_ex(php_ilimit_sys_ex, 0,
-            "cannot create cpu management thread");
+            "cannot create timeout management thread");
         call->state |= PHP_ILIMIT_FINISHED;
         pthread_cond_broadcast(&call->cond);
         pthread_mutex_unlock(&call->mutex);
@@ -453,7 +454,7 @@ void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
     pthread_mutex_unlock(&call->mutex);
 
 __php_ilimit_call_finish:
-    pthread_join(call->threads.cpu, NULL);
+    pthread_join(call->threads.timeout, NULL);
 
     if (call->limits.memory.max) {
         pthread_join(call->threads.memory, NULL);

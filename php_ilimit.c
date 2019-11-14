@@ -54,7 +54,7 @@ ZEND_BEGIN_ARG_INFO_EX(zend_ilimit_arginfo, 0, 0, 1)
     ZEND_ARG_TYPE_INFO(0, interval, IS_LONG, 0)
 ZEND_END_ARG_INFO() /* }}} */
 
-/* {{{ proto mixed \ilimit\call(callable $function [, array $args, int $cpuMS, int $memoryBytes, int $intervalMs = 100]) */
+/* {{{ proto mixed \ilimit\call(callable $function [, array $args, int $timeoutMS, int $memoryBytes, int $intervalMs = 100]) */
 ZEND_NAMED_FUNCTION(zend_ilimit_call)
 {
     php_ilimit_call_t call;
@@ -66,7 +66,7 @@ ZEND_NAMED_FUNCTION(zend_ilimit_call)
         Z_PARAM_FUNC(call.zend.info, call.zend.cache)
         Z_PARAM_OPTIONAL
         Z_PARAM_ARRAY(args)
-        Z_PARAM_LONG(call.limits.cpu)
+        Z_PARAM_LONG(call.limits.timeout)
         Z_PARAM_LONG(call.limits.memory.max)
         Z_PARAM_LONG(call.limits.memory.interval)
     ZEND_PARSE_PARAMETERS_END();
