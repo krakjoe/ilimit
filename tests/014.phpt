@@ -15,5 +15,6 @@ try {
 }
 ?>
 --EXPECT--
-string(27) "memory must be non negative"
+string(27) "memory must not be negative"
+
 

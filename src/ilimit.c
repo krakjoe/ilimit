@@ -384,7 +384,7 @@ void php_ilimit_call(php_ilimit_call_t *call) { /* {{{ */
 
     if (call->limits.memory.max < 0) {
         zend_throw_exception_ex(php_ilimit_runtime_ex, 0,
-            "memory must be non negative");
+            "memory must not be negative");
         call->state |= PHP_ILIMIT_FINISHED;
         pthread_mutex_unlock(&call->mutex);
 
