@@ -111,15 +111,15 @@ static zend_always_inline void php_ilimit_clock(struct timespec *clock, zend_lon
     clock->tv_nsec = time.tv_usec * 1000;
 } /* }}} */
 
-static void php_ilimit_call_cancel(php_ilimit_call_t *call) {
+static void php_ilimit_call_cancel(php_ilimit_call_t *call) { /* {{{ */
     zend_bool cancelled = 0;
     zend_long max = 10000, tick = 0;
 
     pthread_mutex_lock(&call->mutex);
 
-    EG(vm_interrupt) = 1;
-
     call->state |= PHP_ILIMIT_INTERRUPT;
+
+    EG(vm_interrupt) = 1;
 
     while (!(call->state & PHP_ILIMIT_INTERRUPTED)) {
         struct timespec clock;
@@ -147,16 +147,16 @@ static void php_ilimit_call_cancel(php_ilimit_call_t *call) {
 
 __php_ilimit_call_cancel_bail:
     pthread_mutex_unlock(&call->mutex);
-}
+} /* }}} */
 
-static void __php_ilimit_call_thread_cancel(php_ilimit_call_t *call) {
+static void __php_ilimit_call_thread_cancel(php_ilimit_call_t *call) { /* {{{ */
     pthread_mutex_lock(&call->mutex);
 
     call->state |= PHP_ILIMIT_INTERRUPTED;
 
     pthread_cond_broadcast(&call->cond);
     pthread_mutex_unlock(&call->mutex);
-}
+} /* }}} */
 
 static void* __php_ilimit_call_thread(void *arg) { /* {{{ */
     php_ilimit_call_t *call = __context =
