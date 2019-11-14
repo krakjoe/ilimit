@@ -22,6 +22,13 @@
 
 #include "ilimit.h"
 
+#define PHP_ILIMIT_RUNNING     0x00000001
+#define PHP_ILIMIT_FINISHED    0x00000010
+#define PHP_ILIMIT_TIMEOUT     0x00000100
+#define PHP_ILIMIT_MEMORY      0x00001000
+#define PHP_ILIMIT_INTERRUPT   0x00010000
+#define PHP_ILIMIT_INTERRUPTED 0x00100000
+
 zend_class_entry *php_ilimit_ex;
 zend_class_entry *php_ilimit_runtime_ex;
 zend_class_entry *php_ilimit_sys_ex;
@@ -41,6 +48,11 @@ static void php_ilimit_interrupt(zend_execute_data *execute_data) { /* {{{ */
     }
 
     pthread_mutex_lock(&__context->mutex);
+
+    if (!(__context->state & PHP_ILIMIT_INTERRUPT)) {
+        pthread_mutex_unlock(&__context->mutex);
+        return;
+    }
 
     __context->state |= PHP_ILIMIT_INTERRUPTED;
 
@@ -106,6 +118,8 @@ static void php_ilimit_call_cancel(php_ilimit_call_t *call) {
     pthread_mutex_lock(&call->mutex);
 
     EG(vm_interrupt) = 1;
+
+    call->state |= PHP_ILIMIT_INTERRUPT;
 
     while (!(call->state & PHP_ILIMIT_INTERRUPTED)) {
         struct timespec clock;

@@ -59,12 +59,6 @@ typedef struct _php_ilimit_call_t {
 
 } php_ilimit_call_t;
 
-#define PHP_ILIMIT_RUNNING  0x00000001
-#define PHP_ILIMIT_FINISHED 0x00000010
-#define PHP_ILIMIT_TIMEOUT  0x00000100
-#define PHP_ILIMIT_MEMORY   0x00001000
-#define PHP_ILIMIT_INTERRUPTED 0x00010000
-
 void php_ilimit_startup(void);
 
 void php_ilimit_call_init(php_ilimit_call_t *call, zend_execute_data *entry);
