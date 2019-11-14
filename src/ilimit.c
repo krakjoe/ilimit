@@ -51,6 +51,10 @@ static void php_ilimit_interrupt(zend_execute_data *execute_data) { /* {{{ */
 
     if (!(__context->state & PHP_ILIMIT_INTERRUPT)) {
         pthread_mutex_unlock(&__context->mutex);
+
+        if (zend_interrupt_callback) {
+            zend_interrupt_callback(execute_data);
+        }
         return;
     }
 
