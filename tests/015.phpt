@@ -13,7 +13,7 @@ $usage = \memory_get_usage();
 \ini_set("memory_limit", $usage);
 
 try {
-    \ilimit\call(function(){}, [], 1000000, $usage - 10);
+    \ilimit\call(function(){}, [], 1000000, $usage + 1000);
 } catch (\ilimit\Error\Memory $e) {
     var_dump($e->getMessage());
 }
