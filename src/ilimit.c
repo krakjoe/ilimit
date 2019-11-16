@@ -352,7 +352,7 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 
         if (info & ZEND_CALL_RELEASE_THIS) {
             if (info & ZEND_CALL_CTOR) {
-#if PHP_VERSION_ID >= 70200
+#if PHP_VERSION_ID >= 70300
                 GC_DELREF(Z_OBJ(EX(This)));
 #else
                 GC_REFCOUNT(Z_OBJ(EX(This)))--;
