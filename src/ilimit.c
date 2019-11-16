@@ -282,7 +282,7 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 
             if (EX(func)->op_array.last_var) {
                 zval *var = EX_VAR_NUM(EX(func)->common.num_args),
-                     *end = var + (EX(func)->op_array.last_var);
+                     *end = var + EX(func)->op_array.last_var;
 
                 while (var < end) {
                     if (Z_OPT_REFCOUNTED_P(var)) {
@@ -325,11 +325,19 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
                                 last--;
                             }
                             if (last->opcode == ZEND_ROPE_INIT) {
+#if PHP_VERSION_ID >= 70300
                                 zend_string_release_ex(*rope, 0);
+#else
+                                zend_string_release(*rope);
+#endif
                             } else {
                                 int j = last->extended_value;
                                 do {
+#if PHP_VERSION_ID >= 70300
                                     zend_string_release_ex(rope[j], 0);
+#else
+                                    zend_string_release(rope[j]);
+#endif
                                 } while (j--);
                             }
                         } else if (kind == ZEND_LIVE_SILENCE) {
@@ -344,7 +352,11 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 
         if (info & ZEND_CALL_RELEASE_THIS) {
             if (info & ZEND_CALL_CTOR) {
+#if PHP_VERSION_ID >= 70200
                 GC_DELREF(Z_OBJ(EX(This)));
+#else
+                GC_REFCOUNT(Z_OBJ(EX(This)))--;
+#endif
                 if (GC_REFCOUNT(Z_OBJ(EX(This))) == 1) {
                     zend_object_store_ctor_failed(Z_OBJ(EX(This)));
                 }
@@ -353,7 +365,11 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
         }
 
         if (EX(func)->common.fn_flags & ZEND_ACC_CLOSURE) {
+#if PHP_VERSION_ID >= 70300
             OBJ_RELEASE(ZEND_CLOSURE_OBJECT(EX(func)));
+#else
+            OBJ_RELEASE((zend_object*) EX(func)->common.prototype);
+#endif
         }
 
         prev = EX(prev_execute_data);
