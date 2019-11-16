@@ -13,6 +13,13 @@ PHP_ARG_ENABLE([ilimit-coverage],
   [no])
 
 if test "$PHP_ILIMIT" != "no"; then
+  AC_MSG_CHECKING([for NTS])
+  if test "$PHP_THREAD_SAFETY" != "no"; then
+    AC_MSG_ERROR([ilimit requires NTS, please use PHP with ZTS disabled])
+  else
+    AC_MSG_RESULT([ok])
+  fi
+
   PHP_ADD_LIBRARY(pthread,, ILIMIT_SHARED_LIBADD)
 
   PHP_NEW_EXTENSION(ilimit, php_ilimit.c src/ilimit.c, $ext_shared)
