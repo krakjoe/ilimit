@@ -271,83 +271,80 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
         zend_execute_data *prev;
         uint32_t info =
             ZEND_CALL_INFO(execute_data);
+        zend_bool user = (EX(func)->type == ZEND_USER_FUNCTION);
 
-        zend_vm_stack_free_args(execute_data);
+        zval *var = EX_VAR_NUM(0),
+             *end = var +
+                        (user ?
+                            EX(func)->op_array.last_var :
+                            EX(func)->common.num_args);
 
-        if (info & ZEND_CALL_FREE_EXTRA_ARGS) {
-            zend_vm_stack_free_extra_args_ex(info, execute_data);
+        while (var < end) {
+            if (Z_OPT_REFCOUNTED_P(var)) {
+                zval_ptr_dtor_nogc(var);
+            }
+            var++;
         }
 
-        if (EX(func)->type == ZEND_USER_FUNCTION) {
+        if (user && EX(func)->op_array.last_live_range) {
+            int i;
+            uint32_t op = EX(opline) - EX(func)->op_array.opcodes;
 
-            if (EX(func)->op_array.last_var) {
-                zval *var = EX_VAR_NUM(EX(func)->common.num_args),
-                     *end = var + EX(func)->op_array.last_var;
+            for (i = 0; i < EX(func)->op_array.last_live_range; i++) {
+                const zend_live_range *range = &EX(func)->op_array.live_range[i];
 
-                while (var < end) {
-                    if (Z_OPT_REFCOUNTED_P(var)) {
-                        zval_ptr_dtor(var);
-                    }
-                    var++;
+                if (range->start > op) {
+                    break;
                 }
-            }
 
-            if (EX(func)->op_array.last_live_range) {
-                int i;
-                uint32_t op = EX(opline) - EX(func)->op_array.opcodes;
+                if (op < range->end) {
+                    uint32_t kind = range->var & ZEND_LIVE_MASK;
+                    uint32_t var_num = range->var & ~ZEND_LIVE_MASK;
+                    zval *var = EX_VAR(var_num);
 
-                for (i = 0; i < EX(func)->op_array.last_live_range; i++) {
-                    const zend_live_range *range = &EX(func)->op_array.live_range[i];
+                    if (kind == ZEND_LIVE_TMPVAR) {
+                        zval_ptr_dtor_nogc(var);
+                    } else if (kind == ZEND_LIVE_LOOP) {
+                        if (Z_TYPE_P(var) != IS_ARRAY && Z_FE_ITER_P(var) != (uint32_t)-1) {
+                            zend_hash_iterator_del(Z_FE_ITER_P(var));
+                        }
+                        zval_ptr_dtor_nogc(var);
+                    } else if (kind == ZEND_LIVE_ROPE) {
 
-                    if (range->start > op) {
-                        break;
-                    }
-
-                    if (op < range->end) {
-                        uint32_t kind = range->var & ZEND_LIVE_MASK;
-                        uint32_t var_num = range->var & ~ZEND_LIVE_MASK;
-                        zval *var = EX_VAR(var_num);
-
-                        if (kind == ZEND_LIVE_TMPVAR) {
-                            zval_ptr_dtor_nogc(var);
-                        } else if (kind == ZEND_LIVE_LOOP) {
-                            if (Z_TYPE_P(var) != IS_ARRAY && Z_FE_ITER_P(var) != (uint32_t)-1) {
-                                zend_hash_iterator_del(Z_FE_ITER_P(var));
-                            }
-                            zval_ptr_dtor_nogc(var);
-                        } else if (kind == ZEND_LIVE_ROPE) {
-
-                            zend_string **rope = (zend_string **)var;
-                            zend_op *last = EX(func)->op_array.opcodes + op;
-                            while ((last->opcode != ZEND_ROPE_ADD && last->opcode != ZEND_ROPE_INIT)
-                                    || last->result.var != var_num) {
-                                ZEND_ASSERT(last >= EX(func)->op_array.opcodes);
-                                last--;
-                            }
-                            if (last->opcode == ZEND_ROPE_INIT) {
+                        zend_string **rope = (zend_string **)var;
+                        zend_op *last = EX(func)->op_array.opcodes + op;
+                        while ((last->opcode != ZEND_ROPE_ADD && last->opcode != ZEND_ROPE_INIT)
+                                || last->result.var != var_num) {
+                            ZEND_ASSERT(last >= EX(func)->op_array.opcodes);
+                            last--;
+                        }
+                        if (last->opcode == ZEND_ROPE_INIT) {
 #if PHP_VERSION_ID >= 70300
-                                zend_string_release_ex(*rope, 0);
+                            zend_string_release_ex(*rope, 0);
 #else
-                                zend_string_release(*rope);
+                            zend_string_release(*rope);
 #endif
-                            } else {
-                                int j = last->extended_value;
-                                do {
+                        } else {
+                            int j = last->extended_value;
+                            do {
 #if PHP_VERSION_ID >= 70300
-                                    zend_string_release_ex(rope[j], 0);
+                                zend_string_release_ex(rope[j], 0);
 #else
-                                    zend_string_release(rope[j]);
+                                zend_string_release(rope[j]);
 #endif
-                                } while (j--);
-                            }
-                        } else if (kind == ZEND_LIVE_SILENCE) {
-                            if (!EG(error_reporting) && Z_LVAL_P(var) != 0) {
-                                EG(error_reporting) = Z_LVAL_P(var);
-                            }
+                            } while (j--);
+                        }
+                    } else if (kind == ZEND_LIVE_SILENCE) {
+                        if (!EG(error_reporting) && Z_LVAL_P(var) != 0) {
+                            EG(error_reporting) = Z_LVAL_P(var);
                         }
                     }
                 }
             }
+        }
+
+        if (info & ZEND_CALL_FREE_EXTRA_ARGS) {
+            zend_vm_stack_free_extra_args_ex(info, execute_data);
         }
 
         if (info & ZEND_CALL_RELEASE_THIS) {
