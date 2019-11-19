@@ -23,7 +23,7 @@ if (!extension_loaded('ilimit')) {
 }, [], 9000);
 
 ?>
---EXPECT--
+--EXPECTF--
 Fatal error: Uncaught ilimit\Error\Timeout: the time limit of 9000 microseconds has been reached in %s:11
 Stack trace:
 #0 [internal function]: {closure}()
