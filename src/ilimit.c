@@ -304,7 +304,14 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 
                     if (kind == ZEND_LIVE_TMPVAR) {
                         zval_ptr_dtor_nogc(var);
-                    } else if (kind == ZEND_LIVE_LOOP) {
+                    } else 
+#ifdef ZEND_LIVE_NEW
+                    if (kind == ZEND_LIVE_NEW) {
+                        zend_object_store_ctor_failed(Z_OBJ_P(var));
+                        OBJ_RELEASE(Z_OBJ_P(var));
+                    } else
+#endif
+                    if (kind == ZEND_LIVE_LOOP) {
                         if (Z_TYPE_P(var) != IS_ARRAY && Z_FE_ITER_P(var) != (uint32_t)-1) {
                             zend_hash_iterator_del(Z_FE_ITER_P(var));
                         }
@@ -348,6 +355,7 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
         }
 
         if (info & ZEND_CALL_RELEASE_THIS) {
+#ifdef ZEND_CALL_CTOR
             if (info & ZEND_CALL_CTOR) {
 #if PHP_VERSION_ID >= 70300
                 GC_DELREF(Z_OBJ(EX(This)));
@@ -357,7 +365,8 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
                 if (GC_REFCOUNT(Z_OBJ(EX(This))) == 1) {
                     zend_object_store_ctor_failed(Z_OBJ(EX(This)));
                 }
-            }
+            }        
+#endif
             OBJ_RELEASE(Z_OBJ(EX(This)));
         }
 
@@ -377,8 +386,6 @@ static zend_always_inline void php_ilimit_call_cleanup(php_ilimit_call_t *call) 
 
         execute_data = prev;
     }
-
-    EG(current_execute_data) = execute_entry;
 } /* }}} */
 
 static zend_always_inline void php_ilimit_call_destroy(php_ilimit_call_t *call) { /* {{{ */

@@ -20,6 +20,7 @@
 
 #include "zend_exceptions.h"
 #include "zend_closures.h"
+#include "zend_generators.h"
 
 #ifdef ZTS
 # error "Cannot support thread safe builds"
